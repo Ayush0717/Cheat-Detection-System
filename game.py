@@ -1,6 +1,8 @@
 import pygame
 import math
 import random
+import socket
+import threading
 
 # Initialize Pygame
 pygame.init()
@@ -14,6 +16,9 @@ pygame.display.set_caption("2D Shooting Game")
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 GREEN = (0, 255, 0)
+RED = (255, 0, 0)
+YELLOW = (255, 255, 0)
+BLUE = (0, 0, 255)
 
 # Clock
 clock = pygame.time.Clock()
@@ -23,247 +28,117 @@ FPS = 60
 player_size = 50
 player_x, player_y = WIDTH // 2, HEIGHT // 2
 player_speed = 5
+player_life = 3
 
-# Game Loop
-running = True
-while running:
-    screen.fill(BLACK)
-
-    # Handle events
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-    # Player Movement
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-        player_x -= player_speed
-    if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-        player_x += player_speed
-    if keys[pygame.K_w] or keys[pygame.K_UP]:
-        player_y -= player_speed
-    if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-        player_y += player_speed
-
-    # Draw the player as a rectangle
-    pygame.draw.rect(screen, GREEN, (player_x, player_y, player_size, player_size))
-
-    pygame.display.flip()
-    clock.tick(FPS)
-
-pygame.quit()
-
-class Bullet:
-    def __init__(self, x, y, target_x, target_y):
-        self.x = x
-        self.y = y
-        self.speed = 10
-
-        # Calculate the direction of the bullet
-        angle = math.atan2(target_y - y, target_x - x)
-        self.dx = math.cos(angle) * self.speed
-        self.dy = math.sin(angle) * self.speed
-
-    def update(self):
-        self.x += self.dx
-        self.y += self.dy
-
-    def draw(self, screen):
-        pygame.draw.circle(screen, WHITE, (int(self.x), int(self.y)), 5)
-
-# List to hold active bullets
+# Bullet Settings
 bullets = []
+bullet_speed = 10
+bullet_radius = 5
+damage = 1  # Initial bullet damage
 
-# Game Loop (updated)
-running = True
-while running:
-    screen.fill(BLACK)
-
-    # Handle events
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-    # Player Movement
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-        player_x -= player_speed
-    if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-        player_x += player_speed
-    if keys[pygame.K_w] or keys[pygame.K_UP]:
-        player_y -= player_speed
-    if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-        player_y += player_speed
-
-    # Mouse shooting
-    if pygame.mouse.get_pressed()[0]:  # Left mouse button clicked
-        mouse_x, mouse_y = pygame.mouse.get_pos()
-        bullets.append(Bullet(player_x + player_size // 2, player_y + player_size // 2, mouse_x, mouse_y))
-
-    # Update and draw bullets
-    for bullet in bullets[:]:
-        bullet.update()
-        bullet.draw(screen)
-
-    # Draw the player as a rectangle
-    pygame.draw.rect(screen, GREEN, (player_x, player_y, player_size, player_size))
-
-    pygame.display.flip()
-    clock.tick(FPS)
-
-pygame.quit()
-
-class Enemy:
-    def __init__(self):
-        self.x = random.randint(0, WIDTH)
-        self.y = 0
-        self.size = 40
-        self.speed = random.randint(2, 4)
-
-    def update(self):
-        self.y += self.speed
-
-    def draw(self, screen):
-        pygame.draw.rect(screen, (255, 0, 0), (self.x, self.y, self.size, self.size))
-
-# List to hold enemies
+# Enemy Settings
 enemies = []
-
-# Enemy spawn timer
-enemy_spawn_time = 2000  # in milliseconds
+enemy_size = 40
+enemy_spawn_time = 1500  # in milliseconds
 last_enemy_spawn = pygame.time.get_ticks()
+enemy_speed_decrement = 1  # Decrease enemy speed after each game
 
-# Game Loop (updated)
-running = True
-while running:
-    screen.fill(BLACK)
-
-    # Handle events
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-    # Player Movement
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-        player_x -= player_speed
-    if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-        player_x += player_speed
-    if keys[pygame.K_w] or keys[pygame.K_UP]:
-        player_y -= player_speed
-    if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-        player_y += player_speed
-
-    # Spawn enemies
-    current_time = pygame.time.get_ticks()
-    if current_time - last_enemy_spawn > enemy_spawn_time:
-        enemies.append(Enemy())
-        last_enemy_spawn = current_time
-
-    # Update and draw enemies
-    for enemy in enemies[:]:
-        enemy.update()
-        enemy.draw(screen)
-
-    # Update and draw bullets
-    for bullet in bullets[:]:
-        bullet.update()
-        bullet.draw(screen)
-
-    # Collision Detection: Bullet hits enemy
-    for bullet in bullets[:]:
-        for enemy in enemies[:]:
-            if (enemy.x < bullet.x < enemy.x + enemy.size and
-                    enemy.y < bullet.y < enemy.y + enemy.size):
-                bullets.remove(bullet)
-                enemies.remove(enemy)
-
-    # Draw the player
-    pygame.draw.rect(screen, GREEN, (player_x, player_y, player_size, player_size))
-
-    pygame.display.flip()
-    clock.tick(FPS)
-
-pygame.quit()
-
-# Game Over logic
-def game_over_screen():
-    font = pygame.font.SysFont(None, 72)
-    text = font.render('GAME OVER', True, WHITE)
-    screen.blit(text, (WIDTH // 2 - 150, HEIGHT // 2 - 50))
-
-    font = pygame.font.SysFont(None, 36)
-    text = font.render('Press R to Restart', True, WHITE)
-    screen.blit(text, (WIDTH // 2 - 100, HEIGHT // 2 + 50))
-
-# Game Loop (updated)
-running = True
+# Game Over, Score, and Restart settings
 game_over = False
+restart_button_rect = pygame.Rect(WIDTH // 2 - 50, HEIGHT // 2 + 50, 100, 40)
+score = 0
+best_score = 0
+
+# Load Images
+player_image = pygame.Surface((player_size, player_size), pygame.SRCALPHA)
+pygame.draw.polygon(player_image, GREEN, [(25, 0), (50, 50), (0, 50)])
+
+# Function to draw text
+def draw_text(text, font, color, x, y):
+    surface = font.render(text, True, color)
+    screen.blit(surface, (x, y))
+
+# Function to send data to the cheat detection system
+def send_data_to_cheat_system(player_x, player_y, bullet_count):
+    server_ip = "127.0.0.1"
+    server_port = 8080
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.connect((server_ip, server_port))
+    
+    # Send player position and bullet count
+    data = f"{player_x},{player_y},{bullet_count}"
+    sock.send(data.encode("utf-8"))
+    
+    # Receive response from cheat detection system
+    response = sock.recv(1024).decode("utf-8")
+    print(f"Cheat Detection Response: {response}")
+    
+    sock.close()
+
+# Main Game Loop
+running = True
 while running:
     screen.fill(BLACK)
 
-    # Handle events
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
+    # Handle game over state
     if game_over:
-        game_over_screen()
-        keys = pygame.key.get_pressed()
-        if keys[pygame.K_r]:  # Restart the game
-            game_over = False
-            player_x, player_y = WIDTH // 2, HEIGHT // 2
-            enemies.clear()
-            bullets.clear()
+        handle_game_over()
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if restart_button_rect.collidepoint(event.pos):
+                    reset_game()
         continue
 
     # Player Movement
     keys = pygame.key.get_pressed()
     if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-        player_x -= player_speed
+        if player_x > 0:
+            player_x -= player_speed
     if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-        player_x += player_speed
+        if player_x + player_size < WIDTH:
+            player_x += player_speed
     if keys[pygame.K_w] or keys[pygame.K_UP]:
-        player_y -= player_speed
+        if player_y > 0:
+            player_y -= player_speed
     if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-        player_y += player_speed
+        if player_y + player_size < HEIGHT:
+            player_y += player_speed
 
-    # Mouse shooting
-    if pygame.mouse.get_pressed()[0]:  # Left mouse button clicked
-        mouse_x, mouse_y = pygame.mouse.get_pos()
-        bullets.append(Bullet(player_x + player_size // 2, player_y + player_size // 2, mouse_x, mouse_y))
+    # Get mouse position and rotate player image
+    mouse_x, mouse_y = pygame.mouse.get_pos()
+    angle_to_mouse = math.degrees(math.atan2(mouse_y - (player_y + player_size // 2), mouse_x - (player_x + player_size // 2))) + 90
+    rotated_player = pygame.transform.rotate(player_image, angle_to_mouse)
+    screen.blit(rotated_player, (player_x, player_y))
+
+    # Event handling
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
+
+    # Continuous bullet firing (right click to fire continuously)
+    if pygame.mouse.get_pressed()[0]:
+        bullets.append(Bullet(player_x + player_size // 2, player_y + player_size // 2, mouse_x, mouse_y, damage))
 
     # Update and draw bullets
-    for bullet in bullets[:]:
+    for bullet in bullets:
         bullet.update()
-        bullet.draw(screen)
+        bullet.draw()
 
-    # Spawn and update enemies
-    current_time = pygame.time.get_ticks()
-    if current_time - last_enemy_spawn > enemy_spawn_time:
-        enemies.append(Enemy())
-        last_enemy_spawn = current_time
+    # Send data to cheat detection system
+    send_data_to_cheat_system(player_x, player_y, len(bullets))
 
-    for enemy in enemies[:]:
+    # Update and draw enemies
+    for enemy in enemies:
         enemy.update()
-        enemy.draw(screen)
+        enemy.draw()
 
-    # Collision Detection: Bullet hits enemy
-    for bullet in bullets[:]:
-        for enemy in enemies[:]:
-            if (enemy.x < bullet.x < enemy.x + enemy.size and
-                    enemy.y < bullet.y < enemy.y + enemy.size):
-                bullets.remove(bullet)
-                enemies.remove(enemy)
-
-    # Collision Detection: Player hits enemy
-    for enemy in enemies[:]:
-        if (player_x < enemy.x + enemy.size and player_x + player_size > enemy.x and
-                player_y < enemy.y + enemy.size and player_y + player_size > enemy.y):
-            game_over = True
-
-    # Draw the player
-    pygame.draw.rect(screen, GREEN, (player_x, player_y, player_size, player_size))
+    # Display score and life
+    font = pygame.font.SysFont(None, 36)
+    draw_text(f'Score: {score}', font, WHITE, 10, 10)
+    draw_text(f'Lives: {player_life}', font, WHITE, WIDTH - 100, 10)
 
     pygame.display.flip()
     clock.tick(FPS)
