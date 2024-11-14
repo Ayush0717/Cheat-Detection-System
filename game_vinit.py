@@ -20,7 +20,7 @@ BLUE = (0, 0, 255)
 
 # Clock
 clock = pygame.time.Clock()
-FPS = 60
+FPS = 40
 
 # Player Settings
 player_size = 100
@@ -30,15 +30,17 @@ player_life = 3
 
 # Bullet Settings
 bullets = []
-bullet_speed = 10
+bullet_speed = 10  # Constant bullet speed
 bullet_radius = 5
-damage = 1  # Initial bullet damage
+damage = 1  # Bullet damage
+bullet_interval = 200  # 200 milliseconds interval between each shot
 
-# Enemy Settings
+# Enemy Settings (increased initial speed)
 enemies = []
 enemy_size = 40
 enemy_spawn_time = 1500  # in milliseconds
 last_enemy_spawn = pygame.time.get_ticks()
+enemy_speed = 3  # Initial enemy speed
 enemy_speed_decrement = 1  # Decrease enemy speed after each game
 
 # Game Over, Score, and Restart settings
@@ -65,8 +67,8 @@ class Bullet:
         
         # Calculate the angle and direction based on the mouse position
         angle = math.atan2(target_y - y, target_x - x)
-        self.dx = math.cos(angle) * bullet_speed
-        self.dy = math.sin(angle) * bullet_speed
+        self.dx = math.cos(angle) * bullet_speed  # Constant bullet speed
+        self.dy = math.sin(angle) * bullet_speed  # Constant bullet speed
 
     def update(self):
         # Move bullet towards the target direction
@@ -85,7 +87,7 @@ class Enemy:
     def __init__(self, speed):
         self.x = random.randint(0, WIDTH - enemy_size)
         self.y = -enemy_size  # Spawn above screen
-        self.speed = speed
+        self.speed = speed  # Use the modified speed value
         self.health = 3  # Each enemy has 3 health points
 
     def update(self):
@@ -132,7 +134,7 @@ def handle_game_over():
 
 # Function to reset the game
 def reset_game():
-    global player_x, player_y, player_life, bullets, enemies, game_over, score, best_score, enemy_spawn_time, enemy_speed_decrement, damage
+    global player_x, player_y, player_life, bullets, enemies, game_over, score, best_score, enemy_spawn_time, enemy_speed_decrement, damage, enemy_speed
     player_x, player_y = WIDTH // 2, HEIGHT // 2
     player_life = 3
     bullets = []
@@ -151,9 +153,11 @@ def reset_game():
     damage = 1
     game_over = False
 
+    # Increase enemy speed after each game
+    enemy_speed += 1  # Increase speed of enemies as the game progresses
+
 # Timing for Bullet Fire
 last_bullet_time = 0  # Store the last time a bullet was fired
-bullet_interval = 3  # 1 second interval for firing bullets
 
 # Main Game Loop
 running = True
@@ -199,7 +203,7 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-    # Get current time in seconds
+    # Get current time in milliseconds
     current_time = pygame.time.get_ticks()
 
     # Check if enough time has passed to fire a bullet
@@ -217,7 +221,7 @@ while running:
     # Enemy Spawning
     current_time = pygame.time.get_ticks()
     if current_time - last_enemy_spawn > enemy_spawn_time:
-        enemies.append(Enemy(3 - enemy_speed_decrement))  # Spawn enemies with adjusted speed
+        enemies.append(Enemy(enemy_speed))  # Use the updated enemy speed
         last_enemy_spawn = current_time
 
     # Update and draw enemies
@@ -229,26 +233,27 @@ while running:
     for bullet in bullets:
         for enemy in enemies:
             if enemy.x < bullet.x < enemy.x + enemy_size and enemy.y < bullet.y < enemy.y + enemy_size:
-                enemy.hit(damage)
-                if bullet in bullets:
-                    bullets.remove(bullet)
+                enemy.hit(bullet.damage)
+                bullets.remove(bullet)
 
-    # Collision Detection: Player hits enemy (Game Over)
+    # Collision Detection: Enemy hits player
     for enemy in enemies:
-        if player_x < enemy.x + enemy_size and player_x + player_size > enemy.x and player_y < enemy.y + enemy_size and player_y + player_size > enemy.y:
+        if player_x < enemy.x < player_x + player_size and player_y < enemy.y < player_y + player_size:
             player_life -= 1
+            enemies.remove(enemy)
             if player_life <= 0:
                 game_over = True
 
-    # Display Player Life and Score
+    # Display Score and Life
     font = pygame.font.SysFont(None, 36)
-    draw_text(f'Lives: {player_life}', font, WHITE, 10, 10)
-    draw_text(f'Score: {score}', font, WHITE, WIDTH - 100, 10)
+    draw_text(f'Score: {score}', font, WHITE, 10, 10)
+    draw_text(f'Life: {player_life}', font, WHITE, WIDTH - 100, 10)
 
-    # Update the screen
+    # Update the display
     pygame.display.flip()
 
     # Set the frame rate
     clock.tick(FPS)
 
+# Quit the game
 pygame.quit()
