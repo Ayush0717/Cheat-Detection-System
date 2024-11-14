@@ -92,9 +92,14 @@ class Enemy:
 
     def update(self):
         self.y += self.speed
-        # Remove enemy if off screen
+        # Check if enemy has crossed the bottom of the screen
         if self.y > HEIGHT:
-            enemies.remove(self)
+            global player_life  # Access the player's life globally
+            player_life -= 1  # Decrease player life when enemy crosses the bottom
+            enemies.remove(self)  # Remove the enemy from the game
+            if player_life <= 0:  # Check if the player's life reaches 0
+                global game_over  # Set the game over flag
+                game_over = True  # End the game when life reaches 0
 
     def draw(self):
         pygame.draw.rect(screen, RED, (self.x, self.y, enemy_size, enemy_size))
@@ -159,6 +164,17 @@ def reset_game():
 # Timing for Bullet Fire
 last_bullet_time = 0  # Store the last time a bullet was fired
 
+# Function to check collision between player and enemies
+def check_collision(player_x, player_y, enemy):
+    # Create player and enemy rectangles
+    player_rect = pygame.Rect(player_x, player_y, player_size, player_size)
+    enemy_rect = pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)
+
+    # Check if the player rectangle intersects with the enemy rectangle (touching or colliding)
+    if player_rect.colliderect(enemy_rect):
+        return True
+    return False
+
 # Main Game Loop
 running = True
 while running:
@@ -208,51 +224,47 @@ while running:
 
     # Check if enough time has passed to fire a bullet
     if current_time - last_bullet_time >= bullet_interval:
-        if pygame.mouse.get_pressed()[0]:  # Left mouse button is clicked
-            # Create a bullet and add it to the bullets list
-            bullets.append(Bullet(player_x + player_size // 2, player_y + player_size // 2, mouse_x, mouse_y, damage))
-            last_bullet_time = current_time  # Update last bullet fire time
+        if pygame.mouse.get_pressed()[0]:
+            target_x, target_y = pygame.mouse.get_pos()
+            bullet = Bullet(player_x + player_size // 2, player_y + player_size // 2, target_x, target_y, damage)
+            bullets.append(bullet)
+            last_bullet_time = current_time  # Update last bullet time
 
     # Update and draw bullets
-    for bullet in bullets:
+    for bullet in bullets[:]:
         bullet.update()
         bullet.draw()
 
-    # Enemy Spawning
-    current_time = pygame.time.get_ticks()
-    if current_time - last_enemy_spawn > enemy_spawn_time:
-        enemies.append(Enemy(enemy_speed))  # Use the updated enemy speed
+    # Enemy spawn logic
+    if current_time - last_enemy_spawn >= enemy_spawn_time:
+        new_enemy = Enemy(enemy_speed)
+        enemies.append(new_enemy)
         last_enemy_spawn = current_time
 
     # Update and draw enemies
-    for enemy in enemies:
+    for enemy in enemies[:]:
         enemy.update()
         enemy.draw()
 
-    # Collision Detection: Bullet hits enemy
-    for bullet in bullets:
-        for enemy in enemies:
-            if enemy.x < bullet.x < enemy.x + enemy_size and enemy.y < bullet.y < enemy.y + enemy_size:
+        # Check collision with bullets and reduce enemy health
+        for bullet in bullets[:]:
+            if pygame.Rect(bullet.x - bullet_radius, bullet.y - bullet_radius, bullet_radius * 2, bullet_radius * 2).colliderect(pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)):
                 enemy.hit(bullet.damage)
-                bullets.remove(bullet)
+                bullets.remove(bullet)  # Remove bullet after collision
 
-    # Collision Detection: Enemy hits player
-    for enemy in enemies:
-        if player_x < enemy.x < player_x + player_size and player_y < enemy.y < player_y + player_size:
-            player_life -= 1
-            enemies.remove(enemy)
-            if player_life <= 0:
-                game_over = True
+        # Check if the player collided with the enemy
+        if check_collision(player_x, player_y, enemy):
+            player_life -= 1  # Reduce life when collision occurs
+            enemies.remove(enemy)  # Remove the enemy
 
-    # Display Score and Life
+    # Draw the player's life
     font = pygame.font.SysFont(None, 36)
-    draw_text(f'Score: {score}', font, WHITE, 10, 10)
-    draw_text(f'Life: {player_life}', font, WHITE, WIDTH - 100, 10)
+    draw_text(f'Life: {player_life}', font, WHITE, 10, 10)
 
-    # Update the display
+    # Draw the score
+    draw_text(f'Score: {score}', font, WHITE, WIDTH - 120, 10)
+
     pygame.display.flip()
-
-    # Set the frame rate
     clock.tick(FPS)
 
 # Quit the game
