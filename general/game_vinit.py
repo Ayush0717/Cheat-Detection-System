@@ -215,3 +215,4 @@ while running:
     clock.tick(FPS)
 
 pygame.quit()
+'rt;lw4pgtwi4[frxmw=0eru4m5p2ig=34 g [qermpgxi= ]]'
