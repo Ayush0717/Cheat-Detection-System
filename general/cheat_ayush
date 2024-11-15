@@ -1,0 +1,56 @@
+import psutil  # For OS-level monitoring
+import threading
+import socket
+import time
+
+
+class CheatDetector:
+    def __init__(self, max_bullets=50, max_speed=10, bullet_cooldown=200):
+        self.max_bullets = max_bullets
+        self.max_speed = max_speed
+        self.bullet_cooldown = bullet_cooldown
+        self.last_bullet_time = 0
+        self.socket_server = None
+        self.alerts = []
+
+    def detect_bullet_count(self, bullet_count):
+        if bullet_count > self.max_bullets:
+            self.log_alert("Too many bullets fired!")
+
+    def detect_player_speed(self, speed):
+        if speed > self.max_speed:
+            self.log_alert("Unrealistic player speed detected!")
+
+    def detect_rapid_firing(self):
+        current_time = time.time() * 1000  # Current time in milliseconds
+        if current_time - self.last_bullet_time < self.bullet_cooldown:
+            self.log_alert("Rapid firing detected!")
+        self.last_bullet_time = current_time
+
+    def detect_memory_cheat(self, process_name):
+        for proc in psutil.process_iter(['pid', 'name']):
+            if process_name in proc.info['name']:
+                # Inspect memory for anomalies (e.g., unusual access patterns)
+                self.log_alert(f"Memory cheat detected in process {proc.info['name']}!")
+                break
+
+    def log_alert(self, message):
+        print(f"Cheat Detected: {message}")
+        self.alerts.append(message)
+
+    def start_socket_server(self, host="127.0.0.1", port=8080):
+        def run_server():
+            self.socket_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            self.socket_server.bind((host, port))
+            self.socket_server.listen(1)
+            print(f"Cheat Detection Server running on {host}:{port}")
+            while True:
+                conn, addr = self.socket_server.accept()
+                for alert in self.alerts:
+                    conn.sendall(alert.encode())
+                self.alerts.clear()
+                conn.close()
+
+        thread = threading.Thread(target=run_server)
+        thread.daemon = True
+        thread.start()
