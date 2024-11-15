@@ -24,9 +24,11 @@ FPS = 40
 
 # Player Settings
 player_size = 100
-player_x, player_y = WIDTH // 2, HEIGHT // 2
-player_speed = 7  # Increased speed for freer movement
+player_x = WIDTH // 2
+player_y = HEIGHT - player_size - 10  # Fixed y-position at the bottom
+player_speed = 7
 player_life = 3
+legitimate_life_changes = [3]  # Store legitimate values of `player_life`
 
 # Bullet Settings
 bullets = []
@@ -38,10 +40,10 @@ bullet_interval = 200
 # Enemy Settings
 enemies = []
 enemy_size = 40
-initial_enemy_speed = 3  # Set an initial speed for enemies
+initial_enemy_speed = 3
 enemy_spawn_time = 1500
 last_enemy_spawn = pygame.time.get_ticks()
-enemy_speed = initial_enemy_speed  # Use initial speed to allow resetting later
+enemy_speed = initial_enemy_speed
 
 # Game Over, Score, and Restart settings
 game_over = False
@@ -88,11 +90,11 @@ class Enemy:
     def update(self):
         self.y += self.speed
         if self.y > HEIGHT:
-            global player_life
+            global player_life, game_over
             player_life -= 1
+            legitimate_life_changes.append(player_life)  # Track legitimate changes
             enemies.remove(self)
             if player_life <= 0:
-                global game_over
                 game_over = True
 
     def draw(self):
@@ -104,10 +106,9 @@ class Enemy:
         if self.health <= 0:
             enemies.remove(self)
             global score
-            score += 10  # Increase score
+            score += 10
             global enemy_speed
-            # Gradually increase enemy speed based on score
-            enemy_speed = initial_enemy_speed + (score // 50)  # Increase every 50 points
+            enemy_speed = initial_enemy_speed + (score // 50)
 
 # Function to handle game over
 def handle_game_over():
@@ -126,15 +127,17 @@ def handle_game_over():
 
 # Function to reset the game
 def reset_game():
-    global player_x, player_y, player_life, bullets, enemies, game_over, score, best_score, enemy_speed
-    player_x, player_y = WIDTH // 2, HEIGHT // 2
+    global player_x, player_y, player_life, bullets, enemies, game_over, score, best_score, enemy_speed, legitimate_life_changes
+    player_x = WIDTH // 2
+    player_y = HEIGHT - player_size - 10  # Reset to fixed y-position
     player_life = 3
+    legitimate_life_changes = [3]  # Reset legitimate changes
     bullets = []
     enemies = []
     if score > best_score:
         best_score = score
     score = 0
-    enemy_speed = initial_enemy_speed  # Reset enemy speed
+    enemy_speed = initial_enemy_speed
     game_over = False
 
 # Timing for Bullet Fire
@@ -148,6 +151,8 @@ def check_collision(player_x, player_y, enemy):
 
 # Main Game Loop
 running = True
+illegal_access_detected = False
+
 while running:
     screen.fill(BLACK)
 
@@ -163,19 +168,24 @@ while running:
         continue
 
     keys = pygame.key.get_pressed()
+    # Movement only in the x-direction
     if keys[pygame.K_a] or keys[pygame.K_LEFT]:
         if player_x > 0:
             player_x -= player_speed
     if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
         if player_x + player_size < WIDTH:
             player_x += player_speed
-    if keys[pygame.K_w] or keys[pygame.K_UP]:
-        if player_y > 0:
-            player_y -= player_speed
-    if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-        if player_y + player_size < HEIGHT:
-            player_y += player_speed
 
+    # Simulate illegal access
+    if keys[pygame.K_p]:  # "P" key simulates illegal life increment
+        player_life += 1
+
+    # Detect illegal memory access
+    if player_life not in legitimate_life_changes:
+        player_life = legitimate_life_changes[-1]  # Revert to last legitimate value
+        illegal_access_detected = True
+
+    # Always keep the player's y-position fixed
     mouse_x, mouse_y = pygame.mouse.get_pos()
     angle_to_mouse = math.degrees(math.atan2(mouse_y - (player_y + player_size // 2), mouse_x - (player_x + player_size // 2))) + 90
     rotated_player = pygame.transform.rotate(player_image, angle_to_mouse)
@@ -212,14 +222,19 @@ while running:
                 bullets.remove(bullet)
         if check_collision(player_x, player_y, enemy):
             player_life -= 1
+            legitimate_life_changes.append(player_life)  # Track legitimate changes
             enemies.remove(enemy)
+            if player_life <= 0:
+                game_over = True
 
     font = pygame.font.SysFont(None, 36)
     draw_text(f'Life: {player_life}', font, WHITE, 10, 10)
     draw_text(f'Score: {score}', font, WHITE, WIDTH - 120, 10)
 
+    if illegal_access_detected:
+        draw_text("Illegal Access Detected!", font, RED, WIDTH // 2 - 150, HEIGHT - 50)
+
     pygame.display.flip()
     clock.tick(FPS)
 
 pygame.quit()
-

@@ -235,7 +235,7 @@ while running:
     draw_text(f'Life: {player_life}', font_small, WHITE, WIDTH - 100, 10)
     draw_text(f'Name: {player_name}', font_small, WHITE, 10, HEIGHT - 30)
 
-    pygame.display.flip()
+    pygame.display.flip()``
     clock.tick(FPS)
 
 pygame.quit()
