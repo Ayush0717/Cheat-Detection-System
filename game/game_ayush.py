@@ -1,7 +1,7 @@
 import pygame
 import math
-import random
-from cheat_detection.monitor import GameMonitor 
+import random 
+import GameMonitor from cheat_detection 
 # Initialize Pygame
 pygame.init()
 
