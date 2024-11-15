@@ -240,4 +240,4 @@ while running:
 
 pygame.quit()
 
-vinit gandu 
+vinit gandu kidsufhks 
