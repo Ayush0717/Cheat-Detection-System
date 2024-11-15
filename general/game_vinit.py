@@ -204,15 +204,39 @@ while running:
     rotated_player = pygame.transform.rotate(player_image, angle_to_mouse)
     screen.blit(rotated_player, (player_x, player_y))
 
-    # Bullet and Enemy Logic here ...
+    # Bullet and Enemy Logic here...
+    if pygame.mouse.get_pressed()[0] and pygame.time.get_ticks() - last_bullet_time > bullet_interval:
+        last_bullet_time = pygame.time.get_ticks()
+        bullets.append(Bullet(player_x + player_size // 2, player_y + player_size // 2, mouse_x, mouse_y, damage))
+
+    for bullet in bullets[:]:
+        bullet.update()
+        bullet.draw()
+
+    # Spawn enemies
+    if pygame.time.get_ticks() - last_enemy_spawn > enemy_spawn_time:
+        last_enemy_spawn = pygame.time.get_ticks()
+        enemies.append(Enemy(enemy_speed))
+
+    for enemy in enemies[:]:
+        enemy.update()
+        enemy.draw()
+
+    # Check for collisions between bullets and enemies
+    for bullet in bullets[:]:
+        for enemy in enemies[:]:
+            if pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size).collidepoint(bullet.x, bullet.y):
+                enemy.hit(bullet.damage)
+                bullets.remove(bullet)
+                break
 
     # Draw HUD (Score, Life, Player's name)
     draw_text(f'Score: {score}', font_small, WHITE, 10, 10)
-    draw_text(f'Life: {player_life}', font_small, WHITE, 10, 40)
-    draw_text(f'Player: {player_name}', font_small, WHITE, WIDTH // 2 - 50, 10)  # Display the player's name
+    draw_text(f'Life: {player_life}', font_small, WHITE, WIDTH - 100, 10)
+    draw_text(f'Name: {player_name}', font_small, WHITE, 10, HEIGHT - 30)
 
     pygame.display.flip()
     clock.tick(FPS)
 
 pygame.quit()
-asd
+as
