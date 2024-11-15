@@ -204,43 +204,12 @@ while running:
     rotated_player = pygame.transform.rotate(player_image, angle_to_mouse)
     screen.blit(rotated_player, (player_x, player_y))
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+    # Bullet and Enemy Logic here ...
 
-    current_time = pygame.time.get_ticks()
-
-    if current_time - last_bullet_time >= bullet_interval:
-        if pygame.mouse.get_pressed()[0]:
-            target_x, target_y = pygame.mouse.get_pos()
-            bullet = Bullet(player_x + player_size // 2, player_y + player_size // 2, target_x, target_y, damage)
-            bullets.append(bullet)
-            last_bullet_time = current_time
-
-    for bullet in bullets[:]:
-        bullet.update()
-        bullet.draw()
-
-    if current_time - last_enemy_spawn >= enemy_spawn_time:
-        new_enemy = Enemy(enemy_speed)
-        enemies.append(new_enemy)
-        last_enemy_spawn = current_time
-
-    for enemy in enemies[:]:
-        enemy.update()
-        enemy.draw()
-        for bullet in bullets[:]:
-            if pygame.Rect(bullet.x - bullet_radius, bullet.y - bullet_radius, bullet_radius * 2, bullet_radius * 2).colliderect(pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)):
-                enemy.hit(bullet.damage)
-                bullets.remove(bullet)
-        if pygame.Rect(player_x, player_y, player_size, player_size).colliderect(pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)):
-            player_life -= 1
-            enemies.remove(enemy)
-            if player_life <= 0:
-                game_over = True
-
-    draw_text(f'Life: {player_life}', font_small, WHITE, 10, 10)
-    draw_text(f'Score: {score}', font_small, WHITE, WIDTH - 120, 10)
+    # Draw HUD (Score, Life, Player's name)
+    draw_text(f'Score: {score}', font_small, WHITE, 10, 10)
+    draw_text(f'Life: {player_life}', font_small, WHITE, 10, 40)
+    draw_text(f'Player: {player_name}', font_small, WHITE, WIDTH // 2 - 50, 10)  # Display the player's name
 
     pygame.display.flip()
     clock.tick(FPS)
