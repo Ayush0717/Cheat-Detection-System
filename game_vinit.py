@@ -24,7 +24,8 @@ FPS = 40
 
 # Player Settings
 player_size = 100
-player_x, player_y = WIDTH // 2, HEIGHT // 2
+player_x = WIDTH // 2
+player_y = HEIGHT - player_size - 10  # Fixed y-position at the bottom
 player_speed = 7
 player_life = 3
 
@@ -125,7 +126,8 @@ def handle_game_over():
 # Function to reset the game
 def reset_game():
     global player_x, player_y, player_life, bullets, enemies, game_over, score, best_score, enemy_speed
-    player_x, player_y = WIDTH // 2, HEIGHT // 2
+    player_x = WIDTH // 2
+    player_y = HEIGHT - player_size - 10  # Reset to fixed y-position
     player_life = 3
     bullets = []
     enemies = []
@@ -161,19 +163,15 @@ while running:
         continue
 
     keys = pygame.key.get_pressed()
+    # Movement only in the x-direction
     if keys[pygame.K_a] or keys[pygame.K_LEFT]:
         if player_x > 0:
             player_x -= player_speed
     if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
         if player_x + player_size < WIDTH:
             player_x += player_speed
-    if keys[pygame.K_w] or keys[pygame.K_UP]:
-        if player_y > 0:
-            player_y -= player_speed
-    if keys[pygame.K_s] or keys[pygame.K_DOWN]:
-        if player_y + player_size < HEIGHT:
-            player_y += player_speed
 
+    # Always keep the player's y-position fixed
     mouse_x, mouse_y = pygame.mouse.get_pos()
     angle_to_mouse = math.degrees(math.atan2(mouse_y - (player_y + player_size // 2), mouse_x - (player_x + player_size // 2))) + 90
     rotated_player = pygame.transform.rotate(player_image, angle_to_mouse)
