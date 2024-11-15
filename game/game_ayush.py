@@ -1,7 +1,7 @@
 import pygame
 import math
-import random
-
+import random 
+from cheat_detection import GameMonitor,CheatDetector
 # Initialize Pygame
 pygame.init()
 
@@ -146,10 +146,22 @@ def check_collision(player_x, player_y, enemy):
     enemy_rect = pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)
     return player_rect.colliderect(enemy_rect)
 
+
+# game_files = ["game.py", "cheat_detection/detector.py", "cheat_detection/monitor.py"]
+# monitor = GameMonitor(max_speed=15, min_bullet_interval=200, game_files=game_files)
+
+monitor = Monitor("game/game_ayush.py")
+monitor.start_monitoring()
+
 # Main Game Loop
 running = True
 while running:
     screen.fill(BLACK)
+    
+    if monitor.monitor_file_integrity():
+        print("Cheat detected: Game files modified! Exiting...")
+        running = False
+        break
 
     if game_over:
         handle_game_over()
@@ -172,6 +184,11 @@ while running:
             player_x += player_speed
 
     # Always keep the player's y-position fixed
+    if monitor.monitor_player_speed(player_x):
+        print("Cheat detected: Speed hack! Exiting...")
+        running = False
+        break
+
     mouse_x, mouse_y = pygame.mouse.get_pos()
     angle_to_mouse = math.degrees(math.atan2(mouse_y - (player_y + player_size // 2), mouse_x - (player_x + player_size // 2))) + 90
     rotated_player = pygame.transform.rotate(player_image, angle_to_mouse)

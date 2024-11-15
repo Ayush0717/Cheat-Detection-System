@@ -35,6 +35,7 @@ bullet_speed = 10
 bullet_radius = 5
 damage = 1
 bullet_interval = 200
+last_bullet_time = 0  # Keeps track of the last bullet fire time
 
 # Enemy Settings
 enemies = []
@@ -49,6 +50,13 @@ game_over = False
 restart_button_rect = pygame.Rect(WIDTH // 2 - 50, HEIGHT // 2 + 50, 100, 40)
 score = 0
 best_score = 0
+best_player = "N/A"
+player_name = ""
+
+# Fonts
+font_small = pygame.font.SysFont(None, 36)
+font_medium = pygame.font.SysFont(None, 48)
+font_large = pygame.font.SysFont(None, 72)
 
 # Load Images
 player_image = pygame.Surface((player_size, player_size), pygame.SRCALPHA)
@@ -110,43 +118,64 @@ class Enemy:
 
 # Function to handle game over
 def handle_game_over():
-    global game_over, best_score
-    font = pygame.font.SysFont(None, 72)
-    game_over_text = font.render('GAME OVER', True, WHITE)
-    text_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
+    global game_over
+    game_over_text = font_large.render('GAME OVER', True, WHITE)
+    text_rect = game_over_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 100))
     screen.blit(game_over_text, text_rect)
+
+    current_score_text = font_medium.render(f'Your Score: {score}', True, WHITE)
+    current_score_rect = current_score_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 20))
+    screen.blit(current_score_text, current_score_rect)
+
+    highest_score_text = font_medium.render(f'Highest Score: {best_score}', True, WHITE)
+    highest_score_rect = highest_score_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 20))
+    screen.blit(highest_score_text, highest_score_rect)
+
     pygame.draw.rect(screen, BLUE, restart_button_rect)
-    font = pygame.font.SysFont(None, 36)
-    restart_text = font.render('Restart', True, WHITE)
+    restart_text = font_small.render('Restart', True, WHITE)
     restart_rect = restart_text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 70))
     screen.blit(restart_text, restart_rect)
-    font = pygame.font.SysFont(None, 36)
-    draw_text(f'Best Score: {best_score}', font, WHITE, WIDTH // 2 - 70, 10)
 
 # Function to reset the game
 def reset_game():
-    global player_x, player_y, player_life, bullets, enemies, game_over, score, best_score, enemy_speed
+    global player_x, player_y, player_life, bullets, enemies, game_over, score, best_score, best_player, enemy_speed, player_name
+    get_player_name()  # Ask for the player's name again during restart
     player_x = WIDTH // 2
-    player_y = HEIGHT - player_size - 10  # Reset to fixed y-position
+    player_y = HEIGHT - player_size - 10
     player_life = 3
     bullets = []
     enemies = []
     if score > best_score:
         best_score = score
+        best_player = player_name
     score = 0
     enemy_speed = initial_enemy_speed
     game_over = False
 
-# Timing for Bullet Fire
-last_bullet_time = 0
+# Name Input Screen
+def get_player_name():
+    global player_name
+    input_active = True
+    player_name = ""
+    while input_active:
+        screen.fill(BLACK)
+        draw_text("Enter your name: " + player_name, font_medium, WHITE, 200, HEIGHT // 2 - 20)
+        pygame.display.flip()
 
-# Function to check collision between player and enemies
-def check_collision(player_x, player_y, enemy):
-    player_rect = pygame.Rect(player_x, player_y, player_size, player_size)
-    enemy_rect = pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)
-    return player_rect.colliderect(enemy_rect)
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                exit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:
+                    input_active = False
+                elif event.key == pygame.K_BACKSPACE:
+                    player_name = player_name[:-1]
+                else:
+                    player_name += event.unicode
 
 # Main Game Loop
+get_player_name()
 running = True
 while running:
     screen.fill(BLACK)
@@ -163,7 +192,6 @@ while running:
         continue
 
     keys = pygame.key.get_pressed()
-    # Movement only in the x-direction
     if keys[pygame.K_a] or keys[pygame.K_LEFT]:
         if player_x > 0:
             player_x -= player_speed
@@ -171,52 +199,19 @@ while running:
         if player_x + player_size < WIDTH:
             player_x += player_speed
 
-    # Always keep the player's y-position fixed
     mouse_x, mouse_y = pygame.mouse.get_pos()
     angle_to_mouse = math.degrees(math.atan2(mouse_y - (player_y + player_size // 2), mouse_x - (player_x + player_size // 2))) + 90
     rotated_player = pygame.transform.rotate(player_image, angle_to_mouse)
     screen.blit(rotated_player, (player_x, player_y))
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+    # Bullet and Enemy Logic here ...
 
-    current_time = pygame.time.get_ticks()
+    # Draw HUD (Score, Life, Player's name)
+    draw_text(f'Score: {score}', font_small, WHITE, 10, 10)
+    draw_text(f'Life: {player_life}', font_small, WHITE, 10, 40)
+    draw_text(f'Player: {player_name}', font_small, WHITE, WIDTH // 2 - 50, 10)  # Display the player's name
 
-    if current_time - last_bullet_time >= bullet_interval:
-        if pygame.mouse.get_pressed()[0]:
-            target_x, target_y = pygame.mouse.get_pos()
-            bullet = Bullet(player_x + player_size // 2, player_y + player_size // 2, target_x, target_y, damage)
-            bullets.append(bullet)
-            last_bullet_time = current_time
-
-    for bullet in bullets[:]:
-        bullet.update()
-        bullet.draw()
-
-    if current_time - last_enemy_spawn >= enemy_spawn_time:
-        new_enemy = Enemy(enemy_speed)
-        enemies.append(new_enemy)
-        last_enemy_spawn = current_time
-
-    for enemy in enemies[:]:
-        enemy.update()
-        enemy.draw()
-        for bullet in bullets[:]:
-            if pygame.Rect(bullet.x - bullet_radius, bullet.y - bullet_radius, bullet_radius * 2, bullet_radius * 2).colliderect(pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)):
-                enemy.hit(bullet.damage)
-                bullets.remove(bullet)
-        if check_collision(player_x, player_y, enemy):
-            player_life -= 1
-            enemies.remove(enemy)
-            if player_life <= 0:
-                game_over = True
-
-    font = pygame.font.SysFont(None, 36)
-    draw_text(f'Life: {player_life}', font, WHITE, 10, 10)
-    draw_text(f'Score: {score}', font, WHITE, WIDTH - 120, 10)
-
-    pygame.display.flip()
+    pygame.display.flip()``
     clock.tick(FPS)
 
 pygame.quit()
