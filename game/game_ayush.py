@@ -1,23 +1,6 @@
 import pygame
 import math
-import random
-import os
-import psutil
-import time
-import threading
-import hashlib
-import sys
-import pdb
-import sys
-import os
-
-# Get the path of the currently running Python script
-script_path = sys.argv[0]
-
-# Get the absolute path of the script
-absolute_path = os.path.abspath(script_path)
-
-print(f"Path of the Python script: {absolute_path}")
+import random 
 
 # Initialize Pygame
 pygame.init()
@@ -77,31 +60,6 @@ def draw_text(text, font, color, x, y):
     surface = font.render(text, True, color)
     screen.blit(surface, (x, y))
 
-# Function to capture player name
-def get_player_name():
-    global player_name
-    input_active = True
-    font = pygame.font.SysFont(None, 36)
-    player_name = ""
-
-    while input_active:
-        screen.fill(BLACK)
-        draw_text("Enter Your Name: " + player_name, font, WHITE, WIDTH // 2 - 200, HEIGHT // 2)
-        pygame.display.flip()
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_RETURN:  # Press Enter to confirm
-                    input_active = False
-                elif event.key == pygame.K_BACKSPACE:  # Press Backspace to delete
-                    player_name = player_name[:-1]
-                else:
-                    player_name += event.unicode
-
-# Class for bullets
 # Class for bullets
 class Bullet:
     def __init__(self, x, y, target_x, target_y, damage):  # Corrected __init__ method
@@ -150,8 +108,7 @@ class Enemy:
             global score
             score += 10
             global enemy_speed
-            enemy_speed = min(initial_enemy_speed + (score // 50), 10)
-
+            enemy_speed = initial_enemy_speed + (score // 50)
 
 # Function to handle game over
 def handle_game_over():
@@ -180,87 +137,6 @@ def reset_game():
     score = 0
     enemy_speed = initial_enemy_speed
     game_over = False
-    get_player_name()
-
-# Function to detect cheating (example of memory manipulation, suspicious processes, etc.)
-
-# Function to detect abnormal score/life changes
-# Function to detect suspicious score/life changes
-def detect_suspicious_changes(last_score_check, last_life_check, last_score_check_value, last_life_check_value):
-    current_time = time.time()
-
-    # Check for abnormal score change
-    if current_time - last_score_check > 5:  # Check every 5 seconds
-        # Allow a certain amount of natural score increase
-        if score - last_score_check_value > 100:  # Suspicious if score jumps too much in 5 seconds
-            print(f"Suspicious score change detected: {score} (Last check: {last_score_check_value})")
-            alert_admin(f"Suspicious score change detected: {score} (Last check: {last_score_check_value})")
-        
-        # Update the last score check value
-        last_score_check_value = score
-        last_score_check = current_time
-
-    # Check for abnormal life change
-    if current_time - last_life_check > 5:  # Check every 5 seconds
-        # Allow a certain amount of natural life decrease
-        if player_life - last_life_check_value > 1:  # Suspicious if life decreases too much in 5 seconds
-            print(f"Suspicious life change detected: {player_life} (Last check: {last_life_check_value})")
-            alert_admin(f"Suspicious life change detected: {player_life} (Last check: {last_life_check_value})")
-
-        # Update the last life check value
-        last_life_check_value = player_life
-        last_life_check = current_time
-
-    return last_score_check, last_life_check, last_score_check_value, last_life_check_value
-
-
-# Function to detect cheating
-def detect_cheat():
-    print("Cheat detection started...")  # This should print when the thread is started
-
-    last_score_check = time.time()
-    last_life_check = time.time()
-    last_score_check_value = score  # Track last score value for comparison
-    last_life_check_value = player_life  # Track last life value for comparison
-
-    while True:
-        # Detect suspicious processes (cheat tools, debuggers, etc.)
-        for proc in psutil.process_iter(['pid', 'name', 'exe']):
-            # Detect common cheat tools (e.g., Cheat Engine, debuggers, etc.)
-            if 'cheat' in proc.info['name'].lower() or 'x64' in proc.info['name'].lower():
-                print(f"Illegal access detected: Suspicious process {proc.info['name']} (PID: {proc.info['pid']})")
-                alert_admin(f"Suspicious process detected: {proc.info['name']} (PID: {proc.info['pid']})")
-            elif proc.info['exe'] and 'debug' in proc.info['exe'].lower():
-                print(f"Illegal access detected: Debugger detected (PID: {proc.info['pid']})")
-                alert_admin(f"Debugger detected (PID: {proc.info['pid']})")
-
-        # Check for abnormal score or life changes
-        last_score_check, last_life_check, last_score_check_value, last_life_check_value = detect_suspicious_changes(
-            last_score_check, last_life_check, last_score_check_value, last_life_check_value
-        )
-
-        # Monitor the score to detect sudden, impossible changes
-        time.sleep(1)  # Pause to avoid excessive CPU usage
-
-
-def detect_code_injection():
-    # Look for suspicious shared libraries or memory injections
-    try:
-        process = psutil.Process(os.getpid())
-        for dll in process.memory_maps():
-            # Look for DLLs (Dynamic-Link Libraries) that shouldn't be loaded
-            if 'cheat' in dll.path.lower() or 'inject' in dll.path.lower():
-                print(f"Suspicious DLL detected: {dll.path}")
-                return True
-
-    except psutil.NoSuchProcess:
-        return False
-
-    return False
-
-def alert_admin(message):
-    # In a real-world scenario, you might send this to a log, alert system, or administrator
-    print(f"ALERT: {message}")
 
 # Timing for Bullet Fire
 last_bullet_time = 0
@@ -269,15 +145,15 @@ last_bullet_time = 0
 def check_collision(player_x, player_y, enemy):
     player_rect = pygame.Rect(player_x, player_y, player_size, player_size)
     enemy_rect = pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)
-    
-    if player_rect.colliderect(enemy_rect):
-        return True
-    return False
+    return player_rect.colliderect(enemy_rect)
 
-def set_player_life(new_life):
-    global player_life
-    player_life = new_life
-    print(f"Player life set to {player_life}")
+
+# game_files = ["game.py", "cheat_detection/detector.py", "cheat_detection/monitor.py"]
+# monitor = GameMonitor(max_speed=15, min_bullet_interval=200, game_files=game_files)
+
+monitor = Monitor("game/game_ayush.py")
+monitor.start_monitoring()
+
 # Main Game Loop
 get_player_name()  # Prompt player for name before starting the game
 
@@ -301,6 +177,9 @@ while running:
                     reset_game()
         continue
 
+    # Monitor the game environment for cheat detection
+    game_monitor.monitor_game_environment()  # Call to monitor the game environment
+
     keys = pygame.key.get_pressed()
     # Movement logic
     if keys[pygame.K_a] or keys[pygame.K_LEFT]:
@@ -323,17 +202,16 @@ while running:
 
     current_time = pygame.time.get_ticks()
 
-    if not game_over and current_time - last_bullet_time >= bullet_interval:
-        if keys[pygame.K_SPACE]:
-            bullet = Bullet(player_x + player_size // 2, player_y, mouse_x, mouse_y, damage)
+    if current_time - last_bullet_time >= bullet_interval:
+        if pygame.mouse.get_pressed()[0]:
+            target_x, target_y = pygame.mouse.get_pos()
+            bullet = Bullet(player_x + player_size // 2, player_y + player_size // 2, target_x, target_y, damage)
             bullets.append(bullet)
             last_bullet_time = current_time
 
     for bullet in bullets[:]:
-        if bullet.update():
-            bullets.remove(bullet)
-        else:
-            bullet.draw()
+        bullet.update()
+        bullet.draw()
 
     # Spawn enemies
     if current_time - last_enemy_spawn >= enemy_spawn_time:
@@ -352,23 +230,15 @@ while running:
             if check_collision(bullet.x, bullet.y, enemy):
                 enemy.hit(bullet.damage)
                 bullets.remove(bullet)
+        if check_collision(player_x, player_y, enemy):
+            player_life -= 1
+            enemies.remove(enemy)
+            if player_life <= 0:
+                game_over = True
 
-    # Update score, health, and life
     font = pygame.font.SysFont(None, 36)
-    draw_text(f"Score: {score}", font, WHITE, 10, 10)
-    draw_text(f"Lives: {player_life}", font, WHITE, 10, 50)
-
-
-    keys = pygame.key.get_pressed()
-
-    # Set life to 10 for testing
-
-   # Fill the screen with black
-
-
-    # Check if game over (no lives left)
-    if player_life <= 0:
-        game_over = True
+    draw_text(f'Life: {player_life}', font, WHITE, 10, 10)
+    draw_text(f'Score: {score}', font, WHITE, WIDTH - 120, 10)
 
     pygame.display.flip()
     clock.tick(FPS)

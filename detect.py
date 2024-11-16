@@ -1,7 +1,10 @@
 import pygame
 import math
 import random
-import socket  # Added for sending data to the monitoring script
+import os
+import psutil
+import time
+import threading
 
 # Initialize Pygame
 pygame.init()
@@ -28,13 +31,12 @@ player_name = ""
 player_size = 100
 player_x = WIDTH // 2
 player_y = HEIGHT - player_size - 10  # Fixed y-position at the bottom
-player_speed = 7  # Adjustable as per the gameplay
+player_speed = 7
 player_life = 3
-speed_boost = False  # Flag to check if speed boost is active
 
 # Bullet Settings
 bullets = []
-bullet_speed = 10  # Adjustable as per the gameplay
+bullet_speed = 10
 bullet_radius = 5
 damage = 1
 bullet_interval = 200
@@ -86,16 +88,6 @@ def get_player_name():
                 else:
                     player_name += event.unicode
 
-# Function to send data to the monitoring script
-def send_monitor_data(player_speed, bullet_speed):
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            data = f"{player_speed},{bullet_speed}"
-            s.sendto(data.encode(), ("localhost", 9999))
-            print(f"Data sent to monitor: {data}")  # Added this line for verification
-    except Exception as e:
-        print(f"Error sending data to monitor: {e}")
-
 # Class for bullets
 class Bullet:
     def __init__(self, x, y, target_x, target_y, damage):
@@ -116,7 +108,7 @@ class Bullet:
 
 # Class for enemies
 class Enemy:
-    def __init__(self, speed):
+    def __init__(self, speed):  # Fixed init method
         self.x = random.randint(0, WIDTH - enemy_size)
         self.y = -enemy_size
         self.speed = speed
@@ -163,7 +155,7 @@ def reset_game():
     global player_x, player_y, player_life, bullets, enemies, game_over, score, best_score, enemy_speed
     player_x = WIDTH // 2
     player_y = HEIGHT - player_size - 10  # Reset to fixed y-position
-    player_life = 3
+    player_life = 50
     bullets = []
     enemies = []
     if score > best_score:
@@ -173,6 +165,30 @@ def reset_game():
     game_over = False
     get_player_name()
 
+# Function to detect cheating (example of memory manipulation, suspicious processes, etc.)
+# Function to detect cheating (example of memory manipulation, suspicious processes, etc.)
+def detect_cheat():
+    print("Cheat detection started...")  # This should print when the thread is started
+    while True:
+        # Check for memory manipulation by looking for abnormal memory usage
+        process = psutil.Process(os.getpid())
+        memory_info = process.memory_info()
+        if memory_info.rss > 100 * 1024 * 1024:  # Example threshold for memory
+            print("Illegal access detected: Excessive memory usage")
+        
+        # Check for suspicious processes running alongside (e.g., cheat engine)
+        for proc in psutil.process_iter(['pid', 'name']):
+            if 'cheat' in proc.info['name'].lower() or 'x64' in proc.info['name'].lower():  # Common cheat engine names
+                print(f"Illegal access detected: Suspicious process {proc.info['name']} (PID: {proc.info['pid']})")
+        
+        time.sleep(1)  # Pause to avoid excessive CPU usage
+
+
+
+def alert_admin(message):
+    # In a real-world scenario, you might send this to a log, alert system, or administrator
+    print(f"ALERT: {message}")
+
 # Timing for Bullet Fire
 last_bullet_time = 0
 
@@ -180,12 +196,22 @@ last_bullet_time = 0
 def check_collision(player_x, player_y, enemy):
     player_rect = pygame.Rect(player_x, player_y, player_size, player_size)
     enemy_rect = pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)
-    return player_rect.colliderect(enemy_rect)
+    
+    if player_rect.colliderect(enemy_rect):
+        return True
+    return False
 
 # Main Game Loop
 get_player_name()  # Prompt player for name before starting the game
 
 running = True
+
+# Start the cheat detection thread
+print("Starting cheat detection thread...")
+cheat_detection_thread = threading.Thread(target=detect_cheat, daemon=True)
+cheat_detection_thread.start()
+
+
 while running:
     screen.fill(BLACK)
 
@@ -201,21 +227,13 @@ while running:
         continue
 
     keys = pygame.key.get_pressed()
-    # Movement only in the x-direction
+    # Movement logic
     if keys[pygame.K_a] or keys[pygame.K_LEFT]:
         if player_x > 0:
             player_x -= player_speed
     if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
         if player_x + player_size < WIDTH:
             player_x += player_speed
-
-    # Toggle speed boost when "P" is pressed
-    if keys[pygame.K_p]:
-        speed_boost = not speed_boost
-        if speed_boost:
-            player_speed *= 1.5
-        else:
-            player_speed /= 1.5
 
     # Always keep the player's y-position fixed
     mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -228,49 +246,50 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-    current_time = pygame.time.get_ticks()
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE:  # Fire Bullet
+                current_time = pygame.time.get_ticks()
+                if current_time - last_bullet_time > bullet_interval:
+                    bullet = Bullet(player_x + player_size // 2, player_y, mouse_x, mouse_y, damage)
+                    bullets.append(bullet)
+                    last_bullet_time = current_time
 
-    if not game_over and current_time - last_bullet_time >= bullet_interval:
-        if pygame.mouse.get_pressed()[0]:
-            target_x, target_y = pygame.mouse.get_pos()
-            bullet = Bullet(player_x + player_size // 2, player_y + player_size // 2, target_x, target_y, damage)
-            bullets.append(bullet)
-            last_bullet_time = current_time
+    # Bullet update and drawing
+    bullets = [bullet for bullet in bullets if not bullet.update()]
+    for bullet in bullets:
+        bullet.draw()
 
-    for bullet in bullets[:]:
-        if bullet.update():
-            bullets.remove(bullet)
-        else:
-            bullet.draw()
+    # Enemy spawning logic
+    if pygame.time.get_ticks() - last_enemy_spawn > enemy_spawn_time:
+        last_enemy_spawn = pygame.time.get_ticks()
+        new_enemy = Enemy(enemy_speed)
+        enemies.append(new_enemy)
 
-    # Handle Enemies
-    if current_time - last_enemy_spawn >= enemy_spawn_time:
-        last_enemy_spawn = current_time
-        enemy = Enemy(enemy_speed)
-        enemies.append(enemy)
-
-    for enemy in enemies[:]:
+    # Enemy update, drawing, and collision check
+    for enemy in enemies:
         enemy.update()
         enemy.draw()
+
+        # Collision detection
         if check_collision(player_x, player_y, enemy):
-            player_life = max(player_life - 1, 0)
+            player_life -= 1
             enemies.remove(enemy)
-            if player_life == 0:
+            if player_life <= 0:
                 game_over = True
-        for bullet in bullets[:]:
-            if pygame.Rect(bullet.x - bullet_radius, bullet.y - bullet_radius, bullet_radius * 2, bullet_radius * 2).colliderect(pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)):
+
+        # Check bullet collision with enemies
+        for bullet in bullets:
+            if pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size).colliderect(pygame.Rect(bullet.x - bullet_radius, bullet.y - bullet_radius, bullet_radius * 2, bullet_radius * 2)):
                 enemy.hit(bullet.damage)
                 bullets.remove(bullet)
+                break
 
-    # Display Score and Life
-    font = pygame.font.SysFont(None, 36)
-    draw_text(f"Score: {score}", font, WHITE, 10, 10)
-    draw_text(f"Life: {player_life}", font, WHITE, 10, 40)
-
-    # Send data to the monitoring script (player speed, bullet speed)
-    send_monitor_data(player_speed, bullet_speed)
+    # Score and life display
+    draw_text(f"Score: {score}", pygame.font.SysFont(None, 36), WHITE, 10, 10)
+    draw_text(f"Lives: {player_life}", pygame.font.SysFont(None, 36), WHITE, 10, 40)
 
     pygame.display.flip()
     clock.tick(FPS)
 
 pygame.quit()
+quit()
