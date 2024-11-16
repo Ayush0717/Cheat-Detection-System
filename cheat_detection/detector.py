@@ -17,7 +17,7 @@ class CheatDetector:
         speed = (x**2 + y**2)**0.5
         if speed > self.max_speed:
             return True  # Speed hack detected
-        return True
+        return False
 
     def detect_rapid_fire(self, current_time):
         """Detect rapid fire based on bullet firing interval."""

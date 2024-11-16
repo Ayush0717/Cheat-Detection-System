@@ -204,45 +204,40 @@ while running:
     rotated_player = pygame.transform.rotate(player_image, angle_to_mouse)
     screen.blit(rotated_player, (player_x, player_y))
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
-
-    current_time = pygame.time.get_ticks()
-
-    if current_time - last_bullet_time >= bullet_interval:
-        if pygame.mouse.get_pressed()[0]:
-            target_x, target_y = pygame.mouse.get_pos()
-            bullet = Bullet(player_x + player_size // 2, player_y + player_size // 2, target_x, target_y, damage)
-            bullets.append(bullet)
-            last_bullet_time = current_time
+    # Bullet and Enemy Logic here...
+    if pygame.mouse.get_pressed()[0] and pygame.time.get_ticks() - last_bullet_time > bullet_interval:
+        last_bullet_time = pygame.time.get_ticks()
+        bullets.append(Bullet(player_x + player_size // 2, player_y + player_size // 2, mouse_x, mouse_y, damage))
 
     for bullet in bullets[:]:
         bullet.update()
         bullet.draw()
 
-    if current_time - last_enemy_spawn >= enemy_spawn_time:
-        new_enemy = Enemy(enemy_speed)
-        enemies.append(new_enemy)
-        last_enemy_spawn = current_time
+    # Spawn enemies
+    if pygame.time.get_ticks() - last_enemy_spawn > enemy_spawn_time:
+        last_enemy_spawn = pygame.time.get_ticks()
+        enemies.append(Enemy(enemy_speed))
 
     for enemy in enemies[:]:
         enemy.update()
         enemy.draw()
-        for bullet in bullets[:]:
-            if pygame.Rect(bullet.x - bullet_radius, bullet.y - bullet_radius, bullet_radius * 2, bullet_radius * 2).colliderect(pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)):
+
+    # Check for collisions between bullets and enemies
+    for bullet in bullets[:]:
+        for enemy in enemies[:]:
+            if pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size).collidepoint(bullet.x, bullet.y):
                 enemy.hit(bullet.damage)
                 bullets.remove(bullet)
-        if pygame.Rect(player_x, player_y, player_size, player_size).colliderect(pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)):
-            player_life -= 1
-            enemies.remove(enemy)
-            if player_life <= 0:
-                game_over = True
+                break
 
-    draw_text(f'Life: {player_life}', font_small, WHITE, 10, 10)
-    draw_text(f'Score: {score}', font_small, WHITE, WIDTH - 120, 10)
+    # Draw HUD (Score, Life, Player's name)
+    draw_text(f'Score: {score}', font_small, WHITE, 10, 10)
+    draw_text(f'Life: {player_life}', font_small, WHITE, WIDTH - 100, 10)
+    draw_text(f'Name: {player_name}', font_small, WHITE, 10, HEIGHT - 30)
 
     pygame.display.flip()
     clock.tick(FPS)
 
 pygame.quit()
+
+vinit gandu kidsufhks 
