@@ -1,0 +1,24 @@
+general/demo_hritin.py
+general/demo2_hritin.py
+
+
+# Ignore node_modules
+node_modules/
+
+# Ignore logs
+*.log
+
+# Ignore compiled files
+*.class
+*.o
+*.out
+
+# Ignore environment files
+.env
+
+# Ignore system files
+.DS_Store
+Thumbs.db
+
+# Ignore the build directory
+/build/

@@ -22,13 +22,53 @@ BLUE = (0, 0, 255)
 clock = pygame.time.Clock()
 FPS = 40
 
+# System-controlled player data
+class SystemControlledVariable:
+    def __init__(self, value):
+        self._value = value
+        self._read_permission = True
+        self._write_permission = False  # Player has no WRITE permission
+        self._legitimate_context = False 
+
+    def get_value(self):
+        if self._read_permission:
+            return self._value
+        raise PermissionError("READ access denied!")
+
+    def set_value(self, value):
+        if self._write_permission:
+            self._value = value
+        else:
+            raise PermissionError("WRITE access denied!")
+
+    def grant_write_permission(self, legitimate=False):
+        if legitimate:
+            self._legitimate_context = True
+            self._write_permission = True
+        else:
+            global illegal_write_detected
+            if not illegal_write_detected:
+                print("ALERT: Illegal WRITE permission granted to player_life!")
+                illegal_write_detected = True
+            self._write_permission = True
+
+    def revoke_write_permission(self):
+        self._write_permission = False
+        self._legitimate_context = False
+
+    def is_legitimate(self):
+        return self._legitimate_context
+
+
+
+
 # Player Settings
+player_life = SystemControlledVariable(3)  # System controls the player's life
 player_size = 100
 player_x = WIDTH // 2
 player_y = HEIGHT - player_size - 10  # Fixed y-position at the bottom
 player_speed = 7
-player_life = 3
-legitimate_life_changes = [3]  # Store legitimate values of `player_life`
+illegal_write_detected = False  # Prevent spamming of illegal detection alerts
 
 # Bullet Settings
 bullets = []
@@ -55,10 +95,30 @@ best_score = 0
 player_image = pygame.Surface((player_size, player_size), pygame.SRCALPHA)
 pygame.draw.polygon(player_image, GREEN, [(25, 0), (50, 50), (0, 50)])
 
+
+
+
+def detect_illegal_write_access():
+    global illegal_write_detected
+    try:
+        if player_life.is_legitimate():
+            return  # Skip detection for legitimate contexts
+        if player_life._write_permission and not illegal_write_detected:
+            print("ALERT: Illegal WRITE permission granted to player_life!")
+            illegal_write_detected = True
+        player_life.set_value(player_life.get_value() + 1)
+        print("ALERT: Illegal modification detected! Reverting changes...")
+        player_life.revoke_write_permission()
+    except PermissionError:
+        pass  # No illegal activity if WRITE access is denied
+
+
 # Function to draw text
 def draw_text(text, font, color, x, y):
     surface = font.render(text, True, color)
     screen.blit(surface, (x, y))
+
+
 
 # Class for bullets
 class Bullet:
@@ -79,7 +139,7 @@ class Bullet:
     def draw(self):
         pygame.draw.circle(screen, YELLOW, (int(self.x), int(self.y)), bullet_radius)
 
-# Class for enemies
+# Enemy's update method
 class Enemy:
     def __init__(self, speed):
         self.x = random.randint(0, WIDTH - enemy_size)
@@ -90,12 +150,18 @@ class Enemy:
     def update(self):
         self.y += self.speed
         if self.y > HEIGHT:
-            global player_life, game_over
-            player_life -= 1
-            legitimate_life_changes.append(player_life)  # Track legitimate changes
+            global game_over
+            try:
+                # Grant WRITE permission legally
+                player_life.grant_write_permission(legitimate=True)
+                player_life.set_value(player_life.get_value() - 1)
+                player_life.revoke_write_permission()
+            except PermissionError:
+                print("ALERT: Unauthorized WRITE attempt to player_life detected!")
             enemies.remove(self)
-            if player_life <= 0:
+            if player_life.get_value() <= 0:
                 game_over = True
+
 
     def draw(self):
         pygame.draw.rect(screen, RED, (self.x, self.y, enemy_size, enemy_size))
@@ -143,11 +209,11 @@ def reset_game():
 # Timing for Bullet Fire
 last_bullet_time = 0
 
-# Function to check collision between player and enemies
 def check_collision(player_x, player_y, enemy):
     player_rect = pygame.Rect(player_x, player_y, player_size, player_size)
     enemy_rect = pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)
     return player_rect.colliderect(enemy_rect)
+
 
 # Main Game Loop
 running = True
@@ -176,14 +242,18 @@ while running:
         if player_x + player_size < WIDTH:
             player_x += player_speed
 
-    # Simulate illegal access
-    if keys[pygame.K_p]:  # "P" key simulates illegal life increment
-        player_life += 1
+    # Simulate player trying to cheat
+    if keys[pygame.K_p]:
+        print("Initial Life:", player_life.get_value())
+        player_life.grant_write_permission()
+        try:
+            player_life.set_value(player_life.get_value() + 1)
+            print("Life after illegal access:", player_life.get_value())
+        except PermissionError:
+            pass
 
-    # Detect illegal memory access
-    if player_life not in legitimate_life_changes:
-        player_life = legitimate_life_changes[-1]  # Revert to last legitimate value
-        illegal_access_detected = True
+    # Detect illegal activity
+    detect_illegal_write_access()
 
     # Always keep the player's y-position fixed
     mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -220,12 +290,20 @@ while running:
             if pygame.Rect(bullet.x - bullet_radius, bullet.y - bullet_radius, bullet_radius * 2, bullet_radius * 2).colliderect(pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)):
                 enemy.hit(bullet.damage)
                 bullets.remove(bullet)
+
         if check_collision(player_x, player_y, enemy):
-            player_life -= 1
-            legitimate_life_changes.append(player_life)  # Track legitimate changes
             enemies.remove(enemy)
-            if player_life <= 0:
-                game_over = True
+            try:
+                # Grant WRITE permission legally
+                player_life.grant_write_permission(legitimate=True)
+                player_life.set_value(player_life.get_value() - 1)
+                player_life.revoke_write_permission()
+            except PermissionError:
+                print("ALERT: Unauthorized WRITE attempt to player_life detected!")
+
+        if player_life.get_value() <= 0:
+            game_over = True
+
 
     font = pygame.font.SysFont(None, 36)
     draw_text(f'Life: {player_life}', font, WHITE, 10, 10)
