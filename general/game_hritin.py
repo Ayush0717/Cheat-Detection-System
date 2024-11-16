@@ -1,6 +1,7 @@
 import pygame
 import math
 import random
+import socket
 
 # Initialize Pygame
 pygame.init()
@@ -63,12 +64,14 @@ class SystemControlledVariable:
 
 
 # Player Settings
+player_name = ""
 player_life = SystemControlledVariable(3)  # System controls the player's life
 player_size = 100
 player_x = WIDTH // 2
 player_y = HEIGHT - player_size - 10  # Fixed y-position at the bottom
 player_speed = 7
 illegal_write_detected = False  # Prevent spamming of illegal detection alerts
+speed_boost = False  # Flag to check if speed boost is active
 
 # Bullet Settings
 bullets = []
@@ -94,6 +97,43 @@ best_score = 0
 # Load Images
 player_image = pygame.Surface((player_size, player_size), pygame.SRCALPHA)
 pygame.draw.polygon(player_image, GREEN, [(25, 0), (50, 50), (0, 50)])
+
+
+
+# Function to capture player name
+def get_player_name():
+    global player_name
+    input_active = True
+    font = pygame.font.SysFont(None, 36)
+    player_name = ""
+
+    while input_active:
+        screen.fill(BLACK)
+        draw_text("Enter Your Name: " + player_name, font, WHITE, WIDTH // 2 - 200, HEIGHT // 2)
+        pygame.display.flip()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                quit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_RETURN:  # Press Enter to confirm
+                    input_active = False
+                elif event.key == pygame.K_BACKSPACE:  # Press Backspace to delete
+                    player_name = player_name[:-1]
+                else:
+                    player_name += event.unicode
+
+# Function to send data to the monitoring script
+def send_monitor_data(player_speed, bullet_speed):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            data = f"{player_speed},{bullet_speed}"
+            s.sendto(data.encode(), ("localhost", 9999))
+            print(f"Data sent to monitor: {data}")  # Added this line for verification
+    except Exception as e:
+        print(f"Error sending data to monitor: {e}")
+
 
 
 
@@ -193,11 +233,10 @@ def handle_game_over():
 
 # Function to reset the game
 def reset_game():
-    global player_x, player_y, player_life, bullets, enemies, game_over, score, best_score, enemy_speed, legitimate_life_changes
+    global player_x, player_y, bullets, enemies, game_over, score, best_score, enemy_speed
     player_x = WIDTH // 2
     player_y = HEIGHT - player_size - 10  # Reset to fixed y-position
-    player_life = 3
-    legitimate_life_changes = [3]  # Reset legitimate changes
+    player_life.set_value(3)  # Reset the life value using the SystemControlledVariable instance
     bullets = []
     enemies = []
     if score > best_score:
@@ -205,6 +244,8 @@ def reset_game():
     score = 0
     enemy_speed = initial_enemy_speed
     game_over = False
+    get_player_name()
+
 
 # Timing for Bullet Fire
 last_bullet_time = 0
@@ -216,6 +257,7 @@ def check_collision(player_x, player_y, enemy):
 
 
 # Main Game Loop
+get_player_name()
 running = True
 illegal_access_detected = False
 
@@ -242,6 +284,14 @@ while running:
         if player_x + player_size < WIDTH:
             player_x += player_speed
 
+    # Toggle speed boost when "B" is pressed
+    if keys[pygame.K_b]:
+        speed_boost = not speed_boost
+        if speed_boost:
+            player_speed *= 1.5
+        else:
+            player_speed /= 1.5
+
     # Simulate player trying to cheat
     if keys[pygame.K_p]:
         print("Initial Life:", player_life.get_value())
@@ -267,21 +317,33 @@ while running:
 
     current_time = pygame.time.get_ticks()
 
-    if current_time - last_bullet_time >= bullet_interval:
+    if not game_over and current_time - last_bullet_time >= bullet_interval:
         if pygame.mouse.get_pressed()[0]:
             target_x, target_y = pygame.mouse.get_pos()
             bullet = Bullet(player_x + player_size // 2, player_y + player_size // 2, target_x, target_y, damage)
             bullets.append(bullet)
             last_bullet_time = current_time
 
-    for bullet in bullets[:]:
-        bullet.update()
-        bullet.draw()
+    # for bullet in bullets[:]:
+    #     bullet.update()
+    #     bullet.draw()
 
+    for bullet in bullets[:]:
+        if bullet.update():
+            bullets.remove(bullet)
+        else:
+            bullet.draw()
+
+    # if current_time - last_enemy_spawn >= enemy_spawn_time:
+    #     new_enemy = Enemy(enemy_speed)
+    #     enemies.append(new_enemy)
+    #     last_enemy_spawn = current_time
+
+    # Handle Enemies
     if current_time - last_enemy_spawn >= enemy_spawn_time:
-        new_enemy = Enemy(enemy_speed)
-        enemies.append(new_enemy)
         last_enemy_spawn = current_time
+        enemy = Enemy(enemy_speed)
+        enemies.append(enemy)
 
     for enemy in enemies[:]:
         enemy.update()
@@ -300,17 +362,19 @@ while running:
                 player_life.revoke_write_permission()
             except PermissionError:
                 print("ALERT: Unauthorized WRITE attempt to player_life detected!")
-
-        if player_life.get_value() <= 0:
-            game_over = True
+            if player_life.get_value() <= 0:
+                game_over = True
 
 
     font = pygame.font.SysFont(None, 36)
-    draw_text(f'Life: {player_life}', font, WHITE, 10, 10)
+    draw_text(f'Life: {player_life.get_value()}', font, WHITE, 10, 10)
     draw_text(f'Score: {score}', font, WHITE, WIDTH - 120, 10)
 
     if illegal_access_detected:
         draw_text("Illegal Access Detected!", font, RED, WIDTH // 2 - 150, HEIGHT - 50)
+
+    # Send data to the monitoring script (player speed, bullet speed)
+    send_monitor_data(player_speed, bullet_speed)
 
     pygame.display.flip()
     clock.tick(FPS)
