@@ -1,6 +1,7 @@
 import pygame
 import math
 import random
+import socket  # Added for sending data to the monitoring script
 
 # Initialize Pygame
 pygame.init()
@@ -27,12 +28,13 @@ player_name = ""
 player_size = 100
 player_x = WIDTH // 2
 player_y = HEIGHT - player_size - 10  # Fixed y-position at the bottom
-player_speed = 7
+player_speed = 7  # Adjustable as per the gameplay
 player_life = 3
+speed_boost = False  # Flag to check if speed boost is active
 
 # Bullet Settings
 bullets = []
-bullet_speed = 10
+bullet_speed = 10  # Adjustable as per the gameplay
 bullet_radius = 5
 damage = 1
 bullet_interval = 200
@@ -83,6 +85,16 @@ def get_player_name():
                     player_name = player_name[:-1]
                 else:
                     player_name += event.unicode
+
+# Function to send data to the monitoring script
+def send_monitor_data(player_speed, bullet_speed):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            data = f"{player_speed},{bullet_speed}"
+            s.sendto(data.encode(), ("localhost", 9999))
+            print(f"Data sent to monitor: {data}")  # Added this line for verification
+    except Exception as e:
+        print(f"Error sending data to monitor: {e}")
 
 # Class for bullets
 class Bullet:
@@ -197,6 +209,14 @@ while running:
         if player_x + player_size < WIDTH:
             player_x += player_speed
 
+    # Toggle speed boost when "P" is pressed
+    if keys[pygame.K_p]:
+        speed_boost = not speed_boost
+        if speed_boost:
+            player_speed *= 1.5
+        else:
+            player_speed /= 1.5
+
     # Always keep the player's y-position fixed
     mouse_x, mouse_y = pygame.mouse.get_pos()
     angle_to_mouse = math.degrees(math.atan2(mouse_y - (player_y + player_size // 2), mouse_x - (player_x + player_size // 2))) + 90
@@ -220,34 +240,35 @@ while running:
     for bullet in bullets[:]:
         if bullet.update():
             bullets.remove(bullet)
-        bullet.draw()
+        else:
+            bullet.draw()
 
+    # Handle Enemies
     if current_time - last_enemy_spawn >= enemy_spawn_time:
-        new_enemy = Enemy(enemy_speed)
-        enemies.append(new_enemy)
         last_enemy_spawn = current_time
+        enemy = Enemy(enemy_speed)
+        enemies.append(enemy)
 
     for enemy in enemies[:]:
         enemy.update()
         enemy.draw()
-        for bullet in bullets[:]:
-            bullet_center = (bullet.x, bullet.y)
-            enemy_center = (enemy.x + enemy_size // 2, enemy.y + enemy_size // 2)
-            distance = math.hypot(bullet_center[0] - enemy_center[0], bullet_center[1] - enemy_center[1])
-            if distance <= bullet_radius + enemy_size // 2:
-                enemy.hit(bullet.damage)
-                bullets.remove(bullet)
         if check_collision(player_x, player_y, enemy):
             player_life = max(player_life - 1, 0)
             enemies.remove(enemy)
             if player_life == 0:
                 game_over = True
+        for bullet in bullets[:]:
+            if pygame.Rect(bullet.x - bullet_radius, bullet.y - bullet_radius, bullet_radius * 2, bullet_radius * 2).colliderect(pygame.Rect(enemy.x, enemy.y, enemy_size, enemy_size)):
+                enemy.hit(bullet.damage)
+                bullets.remove(bullet)
 
+    # Display Score and Life
     font = pygame.font.SysFont(None, 36)
-    draw_text(f'Name: {player_name}', font, WHITE, 10, 10)
-    draw_text(f'Score: {score}', font, WHITE, 10, 40)
-    draw_text(f'Lives: {player_life}', font, WHITE, 10, 70)
-    draw_text(f'Best: {best_score}', font, WHITE, 10, 100)
+    draw_text(f"Score: {score}", font, WHITE, 10, 10)
+    draw_text(f"Life: {player_life}", font, WHITE, 10, 40)
+
+    # Send data to the monitoring script (player speed, bullet speed)
+    send_monitor_data(player_speed, bullet_speed)
 
     pygame.display.flip()
     clock.tick(FPS)
