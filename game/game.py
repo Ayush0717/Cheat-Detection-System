@@ -5,6 +5,19 @@ import os
 import psutil
 import time
 import threading
+import hashlib
+import sys
+import pdb
+import sys
+import os
+
+# Get the path of the currently running Python script
+script_path = sys.argv[0]
+
+# Get the absolute path of the script
+absolute_path = os.path.abspath(script_path)
+
+print(f"Path of the Python script: {absolute_path}")
 
 # Initialize Pygame
 pygame.init()
@@ -89,8 +102,9 @@ def get_player_name():
                     player_name += event.unicode
 
 # Class for bullets
+# Class for bullets
 class Bullet:
-    def __init__(self, x, y, target_x, target_y, damage):
+    def __init__(self, x, y, target_x, target_y, damage):  # Corrected __init_ method
         self.x = x
         self.y = y
         self.damage = damage
@@ -106,9 +120,11 @@ class Bullet:
     def draw(self):
         pygame.draw.circle(screen, YELLOW, (int(self.x), int(self.y)), bullet_radius)
 
+
 # Class for enemies
-class Enemy:
-    def __init__(self, speed):  # Fixed init method
+# Class for enemies
+class Enemy: 
+    def __init__(self, speed):  # Corrected __init_ method
         self.x = random.randint(0, WIDTH - enemy_size)
         self.y = -enemy_size
         self.speed = speed
@@ -136,6 +152,7 @@ class Enemy:
             global enemy_speed
             enemy_speed = min(initial_enemy_speed + (score // 50), 10)
 
+
 # Function to handle game over
 def handle_game_over():
     global game_over, best_score
@@ -155,7 +172,7 @@ def reset_game():
     global player_x, player_y, player_life, bullets, enemies, game_over, score, best_score, enemy_speed
     player_x = WIDTH // 2
     player_y = HEIGHT - player_size - 10  # Reset to fixed y-position
-    player_life = 50
+    player_life = 200
     bullets = []
     enemies = []
     if score > best_score:
@@ -166,21 +183,84 @@ def reset_game():
     get_player_name()
 
 # Function to detect cheating (example of memory manipulation, suspicious processes, etc.)
-def detect_cheat():
-    # Check for memory manipulation by looking for abnormal memory usage
-    process = psutil.Process(os.getpid())
-    memory_info = process.memory_info()
-    if memory_info.rss > 100 * 1024 * 1024:  # Example threshold for memory
-        print("Illegal access detected: Excessive memory usage")
-        return True  # Cheating detected
-    
-    # Check for suspicious processes running alongside (e.g., cheat engine)
-    for proc in psutil.process_iter(['pid', 'name']):
-        if 'cheat' in proc.info['name'].lower() or 'x64' in proc.info['name'].lower():  # Common cheat engine names
-            print(f"Illegal access detected: Suspicious process {proc.info['name']} (PID: {proc.info['pid']})")
-            return True  # Cheating detected
 
-    return False  # No cheating detected
+# Function to detect abnormal score/life changes
+# Function to detect suspicious score/life changes
+def detect_suspicious_changes(last_score_check, last_life_check, last_score_check_value, last_life_check_value):
+    current_time = time.time()
+
+    # Check for abnormal score change
+    if current_time - last_score_check > 5:  # Check every 5 seconds
+        # Allow a certain amount of natural score increase
+        if score - last_score_check_value > 100:  # Suspicious if score jumps too much in 5 seconds
+            print(f"Suspicious score change detected: {score} (Last check: {last_score_check_value})")
+            alert_admin(f"Suspicious score change detected: {score} (Last check: {last_score_check_value})")
+        
+        # Update the last score check value
+        last_score_check_value = score
+        last_score_check = current_time
+
+    # Check for abnormal life change
+    if current_time - last_life_check > 5:  # Check every 5 seconds
+        # Allow a certain amount of natural life decrease
+        if player_life - last_life_check_value > 1:  # Suspicious if life decreases too much in 5 seconds
+            print(f"Suspicious life change detected: {player_life} (Last check: {last_life_check_value})")
+            alert_admin(f"Suspicious life change detected: {player_life} (Last check: {last_life_check_value})")
+
+        # Update the last life check value
+        last_life_check_value = player_life
+        last_life_check = current_time
+
+    return last_score_check, last_life_check, last_score_check_value, last_life_check_value
+
+
+# Function to detect cheating
+def detect_cheat():
+    print("Cheat detection started...")  # This should print when the thread is started
+
+    last_score_check = time.time()
+    last_life_check = time.time()
+    last_score_check_value = score  # Track last score value for comparison
+    last_life_check_value = player_life  # Track last life value for comparison
+
+    while True:
+        # Detect suspicious processes (cheat tools, debuggers, etc.)
+        for proc in psutil.process_iter(['pid', 'name', 'exe']):
+            # Detect common cheat tools (e.g., Cheat Engine, debuggers, etc.)
+            if 'cheat' in proc.info['name'].lower() or 'x64' in proc.info['name'].lower():
+                print(f"Illegal access detected: Suspicious process {proc.info['name']} (PID: {proc.info['pid']})")
+                alert_admin(f"Suspicious process detected: {proc.info['name']} (PID: {proc.info['pid']})")
+            elif proc.info['exe'] and 'debug' in proc.info['exe'].lower():
+                print(f"Illegal access detected: Debugger detected (PID: {proc.info['pid']})")
+                alert_admin(f"Debugger detected (PID: {proc.info['pid']})")
+
+        # Check for abnormal score or life changes
+        last_score_check, last_life_check, last_score_check_value, last_life_check_value = detect_suspicious_changes(
+            last_score_check, last_life_check, last_score_check_value, last_life_check_value
+        )
+
+        # Monitor the score to detect sudden, impossible changes
+        time.sleep(1)  # Pause to avoid excessive CPU usage
+
+
+def detect_code_injection():
+    # Look for suspicious shared libraries or memory injections
+    try:
+        process = psutil.Process(os.getpid())
+        for dll in process.memory_maps():
+            # Look for DLLs (Dynamic-Link Libraries) that shouldn't be loaded
+            if 'cheat' in dll.path.lower() or 'inject' in dll.path.lower():
+                print(f"Suspicious DLL detected: {dll.path}")
+                return True
+
+    except psutil.NoSuchProcess:
+        return False
+
+    return False
+
+def alert_admin(message):
+    # In a real-world scenario, you might send this to a log, alert system, or administrator
+    print(f"ALERT: {message}")
 
 # Timing for Bullet Fire
 last_bullet_time = 0
@@ -193,6 +273,12 @@ def check_collision(player_x, player_y, enemy):
     if player_rect.colliderect(enemy_rect):
         return True
     return False
+
+def set_player_life(new_life):
+    global player_life
+    player_life = new_life
+    print(f"Player life set to {player_life}")
+
 
 # Main Game Loop
 get_player_name()  # Prompt player for name before starting the game
@@ -225,6 +311,11 @@ while running:
     if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
         if player_x + player_size < WIDTH:
             player_x += player_speed
+
+    
+    # Toggle speed boost when "B" is pressed
+    if keys[pygame.K_l]:
+        score = score + 100
 
     # Always keep the player's y-position fixed
     mouse_x, mouse_y = pygame.mouse.get_pos()
@@ -274,11 +365,23 @@ while running:
     draw_text(f"Score: {score}", font, WHITE, 10, 10)
     draw_text(f"Lives: {player_life}", font, WHITE, 10, 50)
 
+
+    keys = pygame.key.get_pressed()
+
+    # Set life to 10 for testing
+
+   # Fill the screen with black
+
+
     # Check if game over (no lives left)
     if player_life <= 0:
         game_over = True
 
     pygame.display.flip()
     clock.tick(FPS)
+import sys
+
+# Get the path of the Python executable
+
 
 pygame.quit()
