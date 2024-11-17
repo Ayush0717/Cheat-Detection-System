@@ -62,7 +62,7 @@ class GameMonitor:
         memory_info = psutil.virtual_memory()
 
         # Log high resource usage
-        if cpu_usage > 85:
+        if cpu_usage > 80:
             logging.warning(f"High CPU usage detected: {cpu_usage}%")
         if memory_info.percent > 90:
             logging.warning(f"High memory usage detected: {memory_info.percent}%")

@@ -1,0 +1,28 @@
+2024-11-17 12:30:00,399 - INFO - GameMonitor initialized.
+2024-11-17 12:30:02,821 - WARNING - High memory usage detected: 91.6%
+2024-11-17 12:30:08,844 - WARNING - High memory usage detected: 91.6%
+2024-11-17 12:30:14,878 - WARNING - High memory usage detected: 91.4%
+2024-11-17 12:30:20,908 - WARNING - High memory usage detected: 91.0%
+2024-11-17 12:30:26,940 - WARNING - High memory usage detected: 91.0%
+2024-11-17 12:30:32,965 - WARNING - High memory usage detected: 91.4%
+2024-11-17 13:39:28,861 - INFO - GameMonitor initialized.
+2024-11-17 13:39:31,700 - WARNING - High memory usage detected: 93.3%
+2024-11-17 13:39:37,727 - WARNING - High memory usage detected: 95.2%
+2024-11-17 13:39:43,758 - WARNING - High memory usage detected: 93.3%
+2024-11-17 13:39:49,833 - WARNING - High memory usage detected: 93.6%
+2024-11-17 13:49:01,537 - INFO - GameMonitor initialized.
+2024-11-17 13:52:08,828 - INFO - GameMonitor initialized.
+2024-11-17 13:53:16,221 - INFO - GameMonitor initialized.
+2024-11-17 13:53:18,721 - WARNING - High memory usage detected: 94.6%
+2024-11-17 13:53:24,751 - WARNING - High memory usage detected: 94.6%
+2024-11-17 13:53:30,782 - WARNING - High memory usage detected: 94.4%
+2024-11-17 13:53:36,810 - WARNING - High memory usage detected: 94.0%
+2024-11-17 14:10:12,860 - INFO - GameMonitor initialized.
+2024-11-17 14:18:55,069 - INFO - GameMonitor initialized.
+2024-11-17 14:18:57,717 - WARNING - High memory usage detected: 94.0%
+2024-11-17 14:19:03,751 - WARNING - High memory usage detected: 93.8%
+2024-11-17 14:19:09,780 - WARNING - High memory usage detected: 93.8%
+2024-11-17 14:47:11,836 - INFO - GameMonitor initialized.
+2024-11-17 18:43:08,698 - INFO - GameMonitor initialized.
+2024-11-17 18:46:30,409 - INFO - GameMonitor initialized.
+2024-11-17 19:07:21,937 - INFO - GameMonitor initialized.
