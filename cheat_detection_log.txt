@@ -23,3 +23,6 @@
 2024-11-17 14:19:03,751 - WARNING - High memory usage detected: 93.8%
 2024-11-17 14:19:09,780 - WARNING - High memory usage detected: 93.8%
 2024-11-17 14:47:11,836 - INFO - GameMonitor initialized.
+2024-11-17 18:43:08,698 - INFO - GameMonitor initialized.
+2024-11-17 18:46:30,409 - INFO - GameMonitor initialized.
+2024-11-17 19:07:21,937 - INFO - GameMonitor initialized.
