@@ -1,9 +1,7 @@
 import socket
 
-# Set the maximum allowed speeds for detecting cheats
 MAX_PLAYER_SPEED = 10 
 MAX_BULLET_SPEED = 12 
-
 
 def monitor():
     with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
@@ -17,11 +15,13 @@ def monitor():
                     message = data.decode()
                     player_speed, bullet_speed = map(float, message.split(','))
 
-                    if player_speed == -1 and bullet_speed == -1:
-                        print("ALERT: Player attempted to cheat by pressing the 'L' key to increase score!")
+                    if player_speed == 100 and bullet_speed == 50:
+                        print("ALERT: Cheat code injected into the game!")
                     else:
-                        
-                        print(f"Received data: Player Speed = {player_speed}, Bullet Speed = {bullet_speed}")
+                        if player_speed == -1 and bullet_speed == -1:
+                            print("ALERT: Player attempted to cheat by pressing the 'L' key to increase score!")
+                        else:
+                            print(f"Received data: Player Speed = {player_speed}, Bullet Speed = {bullet_speed}")
 
                         if player_speed > MAX_PLAYER_SPEED:
                             print("Warning: Cheat detected! Player speed exceeds limit.")
