@@ -1,4 +1,4 @@
-import psutil  # Used for monitoring processes
+import game.psutil_scratch as psutil_scratch  # Used for monitoring processes
 from cheat_detection.detector import CheatDetector
 
 class GameMonitor:
@@ -8,7 +8,7 @@ class GameMonitor:
     def monitor_game_environment(self):
         """Monitor the game environment for any signs of cheating."""
         # Example: monitor running processes for cheating tools
-        running_processes = psutil.process_iter(['pid', 'name'])
+        running_processes = psutil_scratch.process_iter(['pid', 'name'])
         for process in running_processes:
             if self.detector.is_suspicious(process):
                 print(f"Suspicious activity detected: {process.name()} with PID {process.pid}")

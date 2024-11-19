@@ -1,4 +1,4 @@
-import psutil
+import game.psutil_scratch as psutil_scratch
 
 class CheatDetector:
     def __init__(self):

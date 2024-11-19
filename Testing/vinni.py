@@ -2,7 +2,7 @@ import pygame
 import math
 import random
 import os
-import psutil
+import game.psutil_scratch as psutil_scratch
 import time
 
 # Initialize Pygame
@@ -167,14 +167,14 @@ def reset_game():
 # Function to detect cheating (example of memory manipulation, suspicious processes, etc.)
 def detect_cheat():
     # Check for memory manipulation by looking for abnormal memory usage
-    process = psutil.Process(os.getpid())
+    process = psutil_scratch.Process(os.getpid())
     memory_info = process.memory_info()
     if memory_info.rss > 100 * 1024 * 1024:  # Example threshold
         print("Illegal access detected: Excessive memory usage")
         return False  # Continue the game
     
     # Check for suspicious processes running alongside
-    for proc in psutil.process_iter(['pid', 'name']):
+    for proc in psutil_scratch.process_iter(['pid', 'name']):
         if 'cheat' in proc.info['name'].lower():  # Look for cheat engines or similar
             print(f"Illegal access detected: Suspicious process {proc.info['name']} (PID: {proc.info['pid']})")
             return False  # Continue the game
